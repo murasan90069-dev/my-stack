@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ずんだもん・ターミナル</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #e8f5e9; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background-color: #4caf50; color: white; padding: 12px; text-align: center; font-weight: bold; font-size: 1.1em; flex-shrink: 0; }
+        
+        /* 入力エリアを上に配置 */
+        .input-area { background: #fff; padding: 15px; display: flex; gap: 8px; border-bottom: 1px solid #ddd; z-index: 10; flex-shrink: 0; }
+        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #4caf50; border-radius: 10px; font-size: 16px; outline: none; }
+        button { background-color: #108C; color: white; border: none; padding: 0 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
+        /* ログエリア */
+        #chat-log { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #f9fff9; }
+        .bubble { max-width: 85%; padding: 10px 15px; border-radius: 15px; font-size: 15px; line-height: 1.4; position: relative; }
+        .user { align-self: flex-end; background-color: #108C; color: white; border-bottom-right-radius: 2px; }
+        .bot { align-self: flex-start; background-color: white; color: #333; border-bottom-left-radius: 2px; border: 1px solid #ddd; }
+        
+        .hint { font-size: 12px; color: #666; text-align: center; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <header>ずんだもん・リモコン</header>
+    
+    <div class="input-area">
+        <input type="text" id="msg" placeholder="ここに入力するのだ！">
+        <button onclick="send()">送信</button>
+    </div>
+    <div class="hint">※スマホのマイクボタンで音声入力もできるのだ！</div>
+
+    <div id="chat-log">
+        <div class="bubble bot">準備万端なのだ！<br>上の入力欄に言葉を入れて、「送信」を押してほしいのだ。</div>
+    </div>
+
+    <script>
+        const IP = "192.168.1.82";
+        function send() {
+            const input = document.getElementById('msg');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const log = document.getElementById('chat-log');
+            const userBubble = document.createElement('div');
+            userBubble.className = 'bubble user';
+            userBubble.innerText = text;
+            
+            // 新しいメッセージを一番上（入力欄のすぐ下）に追加
+            log.insertBefore(userBubble, log.firstChild);
+
+            fetch(`http://${IP}/chat?text=${encodeURIComponent(text)}`)
+                .catch(e => console.error("送信エラーなのだ", e));
+            
+            input.value = '';
+            input.focus(); // 送信後もすぐ入力できるようにする
+        }
+
+        document.getElementById('msg').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') send();
+        });
+    </script>
+</body>
+</html>
