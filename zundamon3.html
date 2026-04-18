@@ -2,81 +2,159 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ずんだもん・調整リモコン</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIスタックちゃん・操作パネル</title>
     <style>
-        body { font-family: sans-serif; background-color: #e8f5e9; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        header { background-color: #4caf50; color: white; padding: 10px; text-align: center; font-weight: bold; flex-shrink: 0; }
+        body { font-family: sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; line-height: 1.6; }
+        .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h1 { font-size: 1.3rem; text-align: center; color: #2c3e50; border-bottom: 3px solid #4A90E2; padding-bottom: 10px; margin-top: 0; }
+        .box { margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 10px; background-color: #fafafa; }
+        label { display: block; font-weight: bold; font-size: 0.9rem; margin-bottom: 8px; color: #444; }
         
-        /* 1. 調整ボタン */
-        .admin-area { background: #fffde7; padding: 10px; border-bottom: 2px solid #fbc02d; text-align: center; flex-shrink: 0; }
-        .fix-btn { background-color: #fbc02d; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        input[type="text"], input[type="number"], textarea { 
+            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1rem;
+        }
+        textarea { height: 100px; resize: vertical; }
+        
+        /* 返信を表示するエリアのスタイル */
+        #responseArea { 
+            background-color: #e3f2fd; border-radius: 8px; padding: 15px; margin-top: 15px;
+            font-size: 1rem; color: #1565c0; min-height: 50px; border: 1px solid #bbdefb; white-space: pre-wrap;
+        }
 
-        /* 2. 入力エリア（上に戻したのだ！） */
-        .input-area { background: #fff; padding: 15px; display: flex; gap: 8px; border-bottom: 1px solid #ddd; flex-shrink: 0; }
-        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #4caf50; border-radius: 10px; font-size: 16px; }
-        button.send-btn { background-color: #108C; color: white; border: none; padding: 0 15px; border-radius: 10px; font-weight: bold; }
+        button { 
+            width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; 
+            font-weight: bold; font-size: 1rem; margin-top: 10px; transition: 0.2s;
+        }
+        button:active { transform: translateY(2px); }
 
-        /* 3. チャット表示（今のまま） */
-        #chat-log { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #f9fff9; }
-        .bubble { max-width: 85%; padding: 10px 15px; border-radius: 15px; font-size: 15px; }
-        .user { align-self: flex-end; background-color: #108C; color: white; }
-        .bot { align-self: flex-start; background-color: white; border: 1px solid #ddd; }
+        .send-btn { background: #4A90E2; color: white; }
+        .send-btn:hover { background: #357ABD; }
+        
+        .mic-btn { background: #ff5722; color: white; margin-bottom: 10px; }
+        .mic-btn:hover { background: #e64a19; }
+        
+        .role-btn { background: #8e44ad; color: white; }
+        .role-btn:hover { background: #732d91; }
+
+        .setting-btn { background: #607d8b; color: white; }
+        .setting-btn:hover { background: #455a64; }
+
+        .status-msg { font-size: 0.85rem; color: #ff5722; font-weight: bold; margin: 5px 0; min-height: 1.2em; text-align: center; }
     </style>
 </head>
 <body>
-    <header>ずんだもん・調整リモコン</header>
-    
-    <div class="admin-area">
-        <button class="fix-btn" onclick="fixServo()">📏 サーボを90度に固定</button>
+
+<div class="container">
+    <h1>🤖 スタックちゃん操作盤</h1>
+
+    <div class="box">
+        <label>スタックちゃんの返事:</label>
+        <div id="responseArea">ここに返事が表示されるのだ！</div>
     </div>
 
-    <div class="input-area">
-        <input type="text" id="msg" placeholder="ここに入力！">
-        <button class="send-btn" onclick="send()">送信</button>
+    <div class="box">
+        <label>メッセージを送る:</label>
+        <button id="micBtn" class="mic-btn" onclick="startSpeech()">🎤 声で入力する</button>
+        <div id="micStatus" class="status-msg"></div>
+        <input type="text" id="chatInput" placeholder="お話しする内容を入力...">
+        <div id="sendStats" class="status-msg" style="color: #4A90E2;"></div>
+        <button class="send-btn" onclick="sendChat()">送信なのだ！</button>
     </div>
 
-    <div id="chat-log">
-        <div class="bubble bot">IPアドレスとセキュリティ設定を確認してなのだ！</div>
+    <div class="box">
+        <label>音量 (0-255):</label>
+        <input type="number" id="volumeInput" value="100" min="0" max="255">
+        <button class="setting-btn" onclick="setSetting('volume', 'volumeInput')">音量を変更</button>
     </div>
 
-    <script>
-        // ★ここを新しいIPアドレスに書き換えてなのだ！
-        const IP = "192.168.1.116"; 
+    <div class="box">
+        <label>性格設定 (Role):</label>
+        <textarea id="roleInput" placeholder="例：語尾に「なのだ」をつけて喋る、ずんだもんになりきって。"></textarea>
+        <button class="role-btn" onclick="setRole()">性格を上書きする</button>
+    </div>
+</div>
 
-        async function fixServo() {
-            addLog("bot", "90度固定命令を送信中...");
-            sendToStackchan("正面を向いて");
+<script>
+    const STACKCHAN_IP = "192.168.1.116"; 
+
+    // --- 音声認識 (Speech Recognition) ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        const btn = document.getElementById('micBtn');
+        btn.innerText = "❌ ブラウザが音声非対応";
+        btn.disabled = true;
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            document.getElementById('micStatus').innerText = "👂 聴取中...";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('chatInput').value = transcript;
+            document.getElementById('micStatus').innerText = "✅ 聞き取り成功！";
+        };
+
+        recognition.onerror = () => {
+            document.getElementById('micStatus').innerText = "❌ エラー！もう一度ボタンを！";
+        };
+
+        recognition.onend = () => {
+            setTimeout(() => { document.getElementById('micStatus').innerText = ""; }, 2000);
+        };
+
+        window.startSpeech = () => recognition.start();
+    }
+
+    // --- チャット送信処理（返信取得版） ---
+    async function sendChat() {
+        const chatInput = document.getElementById('chatInput');
+        const status = document.getElementById('sendStats');
+        const responseArea = document.getElementById('responseArea');
+        const text = chatInput.value;
+        
+        if (!text) return;
+        
+        status.innerText = "考え中なのだ...";
+        responseArea.innerText = "スタックちゃんが考えているのだ...";
+        
+        try {
+            // fetchでスタックちゃんからの返事を待つ
+            const response = await fetch(`http://${STACKCHAN_IP}/chat?text=${encodeURIComponent(text)}`);
+            const replyText = await response.text();
+            
+            // 画面に返事を表示する
+            responseArea.innerText = replyText;
+            status.innerText = "返信が届いたのだ！";
+        } catch (e) {
+            console.error(e);
+            // 通信エラーでもスタックちゃんが喋りだすことはあるので、一応通知だけ出す
+            status.innerText = "通信エラーだけど届いてるかも？";
         }
 
-        async function send() {
-            const input = document.getElementById('msg');
-            const text = input.value.trim();
-            if (!text) return;
-            addLog("user", text);
-            sendToStackchan(text);
-            input.value = '';
-        }
+        setTimeout(() => { status.innerText = ""; }, 3000);
+        chatInput.value = "";
+    }
 
-        function sendToStackchan(text) {
-            // httpsのサイトからhttpのIPに送るための特殊な処理
-            fetch(`http://${IP}/chat?text=${encodeURIComponent(text)}`, { mode: 'no-cors' })
-            .then(() => {
-                if(text === "正面を向いて") alert("送信しました！スタックちゃんが動くか確認なのだ。");
-            })
-            .catch(e => {
-                alert("送信に失敗したのだ。設定を確認してなのだ。");
-            });
-        }
+    // --- 設定変更 ---
+    function setSetting(param, inputId) {
+        const val = document.getElementById(inputId).value;
+        fetch(`http://${STACKCHAN_IP}/setting?${param}=${val}`);
+        alert("設定を送信したのだ！");
+    }
 
-        function addLog(type, text) {
-            const log = document.getElementById('chat-log');
-            const b = document.createElement('div');
-            b.className = `bubble ${type}`;
-            b.innerText = text;
-            log.appendChild(b);
-            log.scrollTop = log.scrollHeight;
-        }
-    </script>
+    // --- 性格(Role)設定 ---
+    function setRole() {
+        const roleText = document.getElementById('roleInput').value;
+        if (!roleText) return;
+        fetch(`http://${STACKCHAN_IP}/role?text=${encodeURIComponent(roleText)}`);
+        alert("新しい性格を送信したのだ！");
+    }
+</script>
+
 </body>
 </html>
